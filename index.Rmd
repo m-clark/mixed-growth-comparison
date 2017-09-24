@@ -1,0 +1,256 @@
+---
+title: "The Equivalence of Mixed Models and \nLatent Growth Curves"
+author: "Michael Clark"
+date: "`r Sys.Date()`"
+output: 
+  html_document: 
+    highlight: pygments
+    theme: sandstone
+    toc: true
+    toc_depth: 2
+    toc_collapse: section
+    toc_float: yes
+css: standard_html.css
+---
+
+```{r setup, include=FALSE, eval=TRUE}
+knitr::opts_chunk$set(echo = T, message=F, warning=F, comment=NA, autodep=F, eval=T, cache.rebuild=F, cache=T,
+                      R.options=list(width=120), fig.width=8, fig.align = 'center')
+```
+
+```{r load_common_packages, echo=FALSE, cache=FALSE, eval=TRUE}
+library(plotly); library(tidyverse); library(htmltools); library(lazerhawk); library(lubridate)
+```
+
+
+
+```{r graphics, fig.align='center', echo=FALSE, include=identical(knitr:::pandoc_to(), 'html')}
+# knitr::include_graphics('img/nineteeneightyR.png', dpi = NA)
+```
+
+
+# Introduction
+
+Mixed models and latent growth curves are common approaches to dealing with longitudinal/repeated measures data.  I have demonstrated their equivalence elsewhere (e.g. [here](http://m-clark.github.io/docs/sem/latent-growth-curves.html) and [here](https://m-clark.github.io/docs/mixedModels/growth_vs_mixed.html)), but this document attempts to make that the focus.  The only model packages needed here will be <span class="pack">lme4</span>, <span class="pack">nlme</span>, and <span class="pack">lavaan</span>.
+
+I will not be explaining these models; this document is for those already somewhat familiar with them.  However, the key idea is that the random effects in the mixed model are the latent variables in the growth curve model. 
+
+
+
+# Data setup
+
+```{r data_setup}
+library(tidyverse)
+set.seed(1234)
+n = 500
+timepoints = 4
+N = n*timepoints
+time = rep(0:3, times=n)
+x = rnorm(N)
+subject = rep(1:n, each=4)
+clustervar1 = rep(0:1, e=N/2)
+
+intercept = .5
+slope = .25
+randomEffectsCorr = matrix(c(.75,.2,.2,.75), ncol=2) 
+randomEffects = MASS::mvrnorm(n, mu=c(0,0), Sigma = randomEffectsCorr, empirical=T) %>% 
+  data.frame()
+colnames(randomEffects) = c('Int', 'Slope')
+
+sigma = .5
+y1 = (intercept + randomEffects$Int[subject]) + # random intercepts
+  (slope + randomEffects$Slope[subject])*time + # random slopes 
+  -.25 * x +                                    # additional time-varying covariate
+   .3 * clustervar1 +                           # cluster level covariate
+  rnorm(n*timepoints, mean=0, sd=sigma)         # observation level error
+
+d = data.frame(subject, time, clustervar1, x, y1)
+
+
+# latent growth curve models require data in 'wide' format; ignore the warning
+dWide = d %>%  
+  select(-x) %>% 
+  spread(time, y1, -clustervar1)
+
+colnames(dWide)[-(1:2)] = paste0('y', 0:3)
+
+# this is ugly, but I'm not interested in figuring out the 'proper' way which
+# would not be shorter.
+dWide = dWide %>%  
+  left_join(d %>%  
+              select(-y1) %>% 
+              spread(time, x, -clustervar1))
+colnames(dWide)[-(1:6)] = paste0('x', 0:3)
+head(dWide)
+```
+
+# Random intercepts and slopes
+
+In order to make the models produce the same results, the mixed model will require random slopes for the time covariate, and have to be estimated with maximum likelihood (not an issue with these sample sizes).  The growth curve model will have to have the variances at each time point constrained to be equal.  We'll relax this later.  I also show standardized results to make comparison of the intercept-slope correlation straightforward.
+
+```{r random_intercepts_mm}
+library(lme4)
+mixedModel = lmer(y1 ~ time + (1 + time|subject), data=d, REML=F)  # 1 represents the intercept
+summary(mixedModel)
+```
+
+```{r random_intercepts_lgc}
+library(lavaan)
+model = "
+  # intercept and slope with fixed coefficients
+  i =~ 1*y0 + 1*y1 + 1*y2 + 1*y3
+  s =~ 0*y0 + 1*y1 + 2*y2 + 3*y3
+  y0~~resvar*y0
+  y1~~resvar*y1
+  y2~~resvar*y2
+  y3~~resvar*y3
+"
+
+growthCurveModel = growth(model, data=dWide)
+summary(growthCurveModel, std=T)
+```
+
+The `Intercepts:` section of the growth curve model output represent the fixed effects. The `(resvar)` is the residual variance, while the variance for `i` and `s` are the random effects variance in the mixed model.  The estimated values are perfectly correlated.
+
+```{r compare_effects}
+ranef(mixedModel)$subject %>% 
+  bind_cols(as.tibble(lavPredict(growthCurveModel))) %>% 
+  scale() %>% 
+  round(3) %>% 
+  head(10)
+```
+
+
+
+# Add a cluster level covariate
+
+Adding a cluster level covariate[^clustervar] to the mixed model is trivial. For the growth curve however, we will have to first add another regression equation, and fix the path from that covariate to the slope factor to be zero, otherwise our estimates will be slightly different due to the indirect path through the random intercepts.
+
+```{r clustervar_mm}
+mixedModel = lmer(y1 ~ time + clustervar1 + (1 + time|subject), data=d, REML=F)  # 1 represents the intercept
+summary(mixedModel)
+```
+
+```{r clustervar_lgc}
+model = "
+  # intercept and slope with fixed coefficients
+  i =~ 1*y0 + 1*y1 + 1*y2 + 1*y3
+  s =~ 0*y0 + 1*y1 + 2*y2 + 3*y3
+
+  i ~ clustervar1
+  s ~ 0*clustervar1
+
+  y0~~resvar*y0
+  y1~~resvar*y1
+  y2~~resvar*y2
+  y3~~resvar*y3
+"
+
+growthCurveModel = growth(model, data=dWide)
+summary(growthCurveModel, std=T)
+```
+
+
+# Add an interaction
+
+Next we'll add an interaction between the cluster level covariate.  In most depictions of growth curve models, this is *assumed*, unlike any other modeling situation, where it would be driven by theoretical or exploratory reasons.  Note that the interaction was not part of the data generating process, and thus should be close to zero.
+
+```{r cluster_inter_mm}
+mixedModel = lmer(y1 ~ time*clustervar1 + (1 + time|subject), data=d, REML=F)  
+summary(mixedModel)
+```
+
+
+```{r cluster_inter_lgc}
+model = "
+# intercept and slope with fixed coefficients
+  i =~ 1*y0 + 1*y1 + 1*y2 + 1*y3
+  s =~ 0*y0 + 1*y1 + 2*y2 + 3*y3
+  
+  i + s ~ clustervar1
+  
+  y0~~resvar*y0
+  y1~~resvar*y1
+  y2~~resvar*y2
+  y3~~resvar*y3
+"
+
+growthCurveModel = growth(model, data=dWide)
+summary(growthCurveModel, std=T)
+```
+
+In the `Regressions:` section,  the `i ~ clustervar1` path represents the fixed effect of `clustervar1` in the mixed model, while the `s ~ clustervar1` path coefficient is the interaction effect.
+
+
+# Add a time-varying covariate
+
+As with the cluster level covariate, adding a time-varying covariate is trivial for the mixed model, but tedious for the growth curve model.  Furthermore, for the latter we have to fix the effect to be constant over time, otherwise by default it will estimate the interaction with time.  For this demo I will revert back to having no interaction with the cluster level covariate.
+
+```{r tv_mm}
+mixedModel = lmer(y1 ~ time + clustervar1 + x + (1 + time|subject), data=d, REML=F)  
+summary(mixedModel)
+```
+
+```{r tv_lgc}
+model = "
+  # intercept and slope with fixed coefficients
+  i =~ 1*y0 + 1*y1 + 1*y2 + 1*y3
+  s =~ 0*y0 + 1*y1 + 2*y2 + 3*y3
+  
+  i ~ clustervar1
+  s ~ 0*clustervar1
+
+  # add time-varying covariate 
+  y0 ~ x_coef*x0
+  y1 ~ x_coef*x1
+  y2 ~ x_coef*x2
+  y3 ~ x_coef*x3
+
+  y0 ~~ resvar*y0
+  y1 ~~ resvar*y1
+  y2 ~~ resvar*y2
+  y3 ~~ resvar*y3
+"
+
+growthCurveModel = growth(model, data=dWide)
+summary(growthCurveModel, std=T)
+```
+
+Results are still the same.
+
+# Heterogenous variances
+
+We'll go back to the simplest setting for this. This will require <span class="pack">nlme</span> as <span class="pack">lme4</span> doesn't have this functionality.
+
+```{r hetero_mm}
+library(nlme)
+mixedModel = lme(y1 ~ time, random = ~1 + time|subject, data=d, method='ML',
+                 weights=varIdent(form=~1|time))  
+summary(mixedModel)
+VarCorr(mixedModel)
+```
+
+```{r hetero_lgc}
+model = "
+  # intercept and slope with fixed coefficients
+  i =~ 1*y0 + 1*y1 + 1*y2 + 1*y3
+  s =~ 0*y0 + 1*y1 + 2*y2 + 3*y3
+"
+
+growthCurveModel = growth(model, data=dWide)
+summary(growthCurveModel, std=T)
+```
+
+Note that the residual variance at time 0 in the growth model is the reported residual variance in the mixed model.  Unfortunately nlme is a bit convoluted[^convoluted] in reporting the actual estimated variances, which are given not only as relative to the time 0 estimate, but also on the standard deviation scale.  Even figuring out how to get these values is something no one can actually remember without multiple web searches.
+
+```{r hetero_vars}
+(c(1.0000000, coef(mixedModel$modelStruct$varStruct, unconstrained=F))*mixedModel$sigma)^2 %>% 
+  rbind(coef(growthCurveModel)[1:4])
+```
+
+
+
+
+[^clustervar]: In case it's not clear, this would be a time-invariant variable. If these were repeated measures on indivduals, this would be something like sex or race.
+
+[^convoluted]: Most of this package object structure and output is, starting with the umpteen decimal places.
