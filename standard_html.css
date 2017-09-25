@@ -69,7 +69,8 @@ pre .r {
 }
 
 #TOC{
-  font-size: 75%;
+  font-size: 85%;
+  color: #9E1B34;
 
 }
 
@@ -86,14 +87,16 @@ pre .r {
     width: 100%;
     line-height: 30px;
     background-color: #fffff9;
+
 }
 
 li.tocify-item.list-group-item.active {
-  background-color: rgb(97,151,213);             /* background of current section in toc */
+  background-color: #9E1B34;             /* background of current section in toc */
+  color: white;
 }
 
 h1, h2, h3, h4, h5 {
-  color:#990024;
+  color:#9E1B34;
   font-family: 'Roboto Condensed';
 }
 
