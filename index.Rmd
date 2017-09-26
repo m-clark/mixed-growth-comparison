@@ -1,6 +1,6 @@
 ---
 title: <div style='text-align:center'><span style='font-size:50%'>The<br></span>Equivalence<span style='font-size:50%'><br>of<br></span>Mixed Models<span style='font-size:50%'><br>and<br></span>Latent Growth Curves</div>
-author: "Michael Clark"
+author: <div>Michael Clark <br> CSCAR <br> U. of Michigan</div>
 date: "`r Sys.Date()`"
 output: 
   html_document: 
@@ -31,28 +31,29 @@ library(plotly); library(tidyverse); library(htmltools); library(lazerhawk); lib
 
 # Introduction
 
-Mixed models and latent growth curves (LGC) are common approaches to dealing with longitudinal/repeated measures data.  I have demonstrated their equivalence elsewhere (e.g. [here](http://m-clark.github.io/docs/sem/latent-growth-curves.html) and [here](https://m-clark.github.io/docs/mixedModels/growth_vs_mixed.html)), but this document hits on some additional nuances and updates the latter.  The only model packages needed here will be <span class="pack">lme4</span>, <span class="pack">nlme</span>, and <span class="pack">lavaan</span>.
+Mixed models and latent growth curves (LGC) are common approaches to dealing with longitudinal/repeated measures data.  I have demonstrated their equivalence elsewhere (e.g. [here](http://m-clark.github.io/docs/sem/latent-growth-curves.html) and [here](https://m-clark.github.io/docs/mixedModels/growth_vs_mixed.html)), but this document hits on some additional nuances and notably updates the latter.  The only model packages needed here will be <span class="pack">lme4</span>, <span class="pack">nlme</span>, and <span class="pack">lavaan</span>.
 
 I will not be explaining these models in detail; this document is for those already somewhat familiar with them.  However, the key idea is that the random effects in the mixed model are the latent variables in the growth curve model. 
 
 In what follows we'll examine data where clusters have multiple observations across time, and eventually other covariates will be added to the mix that are time-varying or time-constant. The following can serve as a quick reminder of what we're dealing with. The following depicts a mixed model with random intercepts and random slopes for the time covariate for observations $i$ in cluster $c$.
 
 $$y_{ic} = \alpha_c + \beta_c \cdot \mathscr{time}_{ic} + \epsilon_{ic}$$
-$$\alpha_c \sim \mathscr{N}(\mu_\alpha, \tau^2)$$
-$$\beta_c \sim \mathscr{N}(\mu_\beta, \varphi^2)$$
-$$\alpha_c, \beta_c \sim \mathscr{N}(\left[\begin{smallmatrix}\mu_\alpha \\ \\
-\mu_\beta \end{smallmatrix}\right],
-\Sigma)$$
 
-$$\Sigma = \left[\begin{smallmatrix}\tau^2 & \rho \\
+
+$$\begin{bmatrix}\alpha_c \\
+\beta_c \end{bmatrix}  \sim \mathscr{N}(\mathbf{\mu},
+\mathbf{\Sigma}) $$
+
+$$ \mathbf{\mu} = \begin{bmatrix}\mu_\alpha \\ \mu_\beta \end{bmatrix}$$
+$$\mathbf{\Sigma} = \left[\begin{smallmatrix}\tau^2 & \rho \\
 \rho & \varphi^2 \end{smallmatrix}\right]$$
 
 
 $$\epsilon_{ic} \sim \mathscr{N}(0, \varsigma^2)$$
-In the above we have cluster-specific coefficients, $\alpha_c$  and $\beta_c$, drawn from a multivariate normal distribution with means, $\mu_\alpha$ and $\mu_\beta$, the soi-disant 'fixed effects'. Each has their own variance ($\tau^2$ and $\varphi^2$, and some correlation $\rho$), to go along with the residual variance at the observation level ($\varsigma^2$).
+In the above we have cluster-specific coefficients, $\alpha_c$  and $\beta_c$, drawn from a multivariate normal distribution with means, $\mu_\alpha$ and $\mu_\beta$, the soi-disant 'fixed effects'. Each has their respective variance ($\tau^2$ and $\varphi^2$), and some covariance ($\rho$), to go along with the residual variance at the observation level ($\varsigma^2$).
 
 
-The same model is depicted graphically as a growth curve model in the structural equation modeling (SEM) context (sans variances).
+The same model is depicted graphically as a growth curve model in the structural equation modeling (SEM) context. I show this and subsequent graphs sans variances, but you can assume there is a little latent variable representing 'all other causes' pointing at the latent variables and endogenous variables (i.e. the Ys).
 
 ```{r growth_graph, echo=FALSE}
 # note to self Diagrammer is difficult at best for multifactor loading situations, mostly because there is no control over label placement
@@ -60,7 +61,6 @@ library(DiagrammeR)
 tags$div(style="width:50%; margin:auto auto; font-size:50%",
          grViz('growth.gv', width='100%', height='25%')
 )
-
 ```
 
 
@@ -130,14 +130,27 @@ dWide %>%
 
 We start with a basic random intercept model.  This is notably different than the data generating process, so the estimates will be quite a bit off. In order to make the models produce the same results, the mixed model have to be estimated with maximum likelihood (not an issue with these sample sizes).
 
+## Mixed model
+
 ```{r random_intercepts_mm}
 library(lme4)
 mixedModel = lmer(y1 ~ time + (1|subject), data=d, REML=F)  # 1 represents the intercept
 summary(mixedModel, corr=F)  # lessen clutter
 ```
 
+## LGC
 
 For the LGC model, I will go ahead and keep the format that will be consistent with later models, but this means we'll have to fix some parameters so that we only have random intercepts and not slopes for the time covariate. The model also will start with the variances at each time point constrained to be equal to mimic the mixed model.  We'll relax this for both models later.
+
+```{r growth_graph_ri, echo=FALSE}
+# note to self Diagrammer is difficult at best for multifactor loading situations, mostly because there is no control over label placement
+library(DiagrammeR)
+tags$div(style="width:50%; margin:auto auto; font-size:50%",
+         grViz('growth_ran_int.gv', width='100%', height='25%')
+)
+
+```
+
 
 ```{r random_intercepts_lgc}
 library(lavaan)
@@ -165,12 +178,27 @@ The `Intercepts:` section of the growth curve model output represents the fixed 
 
 # Random intercepts and slopes
 
+## Mixed model
+
 Now we add random slopes for the effect of time.  I also show standardized results to make comparison of the intercept-slope correlation straightforward.
 
 ```{r random_intercepts_slopes_mm}
 mixedModel = lmer(y1 ~ time + (1 + time|subject), data=d, REML=F) 
 summary(mixedModel, corr=F) 
 ```
+
+## LGC
+
+This is the same graphical model we saw at the beginning.
+
+```{r growth_graph2, echo=FALSE}
+# note to self Diagrammer is difficult at best for multifactor loading situations, mostly because there is no control over label placement
+library(DiagrammeR)
+tags$div(style="width:50%; margin:auto auto; font-size:50%",
+         grViz('growth.gv', width='100%', height='25%')
+)
+```
+
 
 ```{r random_intercepts_slopes_lgc}
 model = "
@@ -202,12 +230,27 @@ coef(mixedModel)$subject %>%
 
 # Add a cluster level covariate
 
-Adding a cluster level covariate[^clustervar] to the mixed model is trivial. For the growth curve however, we will have to first add another regression equation, and fix the path from that covariate to the slope factor to be zero, otherwise our estimates will be slightly different due to the indirect path through the random intercepts.
+## Mixed model
+
+Adding a cluster level covariate[^clustervar] to the mixed model is trivial. We just add it as we would any other predictor.
 
 ```{r clustervar_mm}
 mixedModel = lmer(y1 ~ time + clustervar1 + (1 + time|subject), data=d, REML=F)
 summary(mixedModel, corr=F)
 ```
+
+## LGC
+
+For the growth curve however, we will have to first add another regression equation, and fix the path from that covariate to the slope factor to be zero, otherwise our estimates will be slightly different due to the indirect path through the random intercepts.
+
+```{r growth_graph_clus_cov, echo=FALSE}
+# note to self Diagrammer is difficult at best for multifactor loading situations, mostly because there is no control over label placement
+library(DiagrammeR)
+tags$div(style="width:50%; margin:auto auto; font-size:50%",
+         grViz('growth_clus_cov.gv', width='100%', height='25%')
+)
+```
+
 
 ```{r clustervar_lgc}
 model = "
@@ -233,13 +276,28 @@ summary(growthCurveModel, std=T)
 
 # Add an interaction
 
-Next we'll add an interaction between the cluster level covariate and time.  In almost every depiction of growth curve models I've seen, this is *assumed*, unlike any other modeling situation, where it would normally be driven by theoretical or exploratory reasons.  Note that the interaction was not part of the data generating process, and thus should be close to zero.
+## Mixed model
+
+Next we'll add an interaction between the cluster level covariate and time.  For the mixed model, this is done in the same way we would for any regression model.
 
 ```{r cluster_inter_mm}
 mixedModel = lmer(y1 ~ time*clustervar1 + (1 + time|subject), data=d, REML=F)  
 summary(mixedModel, corr=F)
 ```
 
+
+## LGC
+
+In almost every depiction of growth curve models I've seen, the interaction of cluster level covariates and time is the default setting, unlike any other modeling situation, where it would normally be driven by theoretical or exploratory reasons.  Note that the interaction was not part of the data generating process, and thus should be close to zero.
+
+
+```{r growth_graph_clus_cov_inter, echo=FALSE}
+# note to self Diagrammer is difficult at best for multifactor loading situations, mostly because there is no control over label placement
+library(DiagrammeR)
+tags$div(style="width:50%; margin:auto auto; font-size:50%",
+         grViz('growth_clus_cov_inter.gv', width='100%', height='25%')
+)
+```
 
 ```{r cluster_inter_lgc}
 model = "
@@ -261,16 +319,30 @@ growthCurveModel = growth(model, data=dWide)
 summary(growthCurveModel, std=T)
 ```
 
-In the `Regressions:` section,  the `intercept ~ clustervar1` path represents the fixed effect of `clustervar1` in the mixed model, while the `time ~ clustervar1` path coefficient is the interaction effect.
+In the `Regressions:` section,  the `intercept ~ clustervar1` path represents the fixed effect of `clustervar1` in the mixed model (i.e. the cluster effect at time 0), while the `time ~ clustervar1` path coefficient is the interaction effect.
 
 
 # Add a time-varying covariate
 
-As with the cluster level covariate, adding a time-varying covariate is trivial for the mixed model, but tedious for the growth curve model.  Furthermore, for the latter we have to fix the effect to be constant over time, otherwise by default it will estimate the interaction with time.  For this demo I will revert back to having no interaction with the cluster level covariate.  This is the data generating model, and can be compared to the parameters set in the data setup at the beginning.
+## Mixed model
+
+As with the cluster level covariate, adding a time-varying covariate is trivial for the mixed model.  For this demo I will revert back to having no interaction with the cluster level covariate.  This is the data generating model, and can be compared to the parameters set in the data setup at the beginning.
 
 ```{r tv_mm}
 mixedModel = lmer(y1 ~ time + clustervar1 + x + (1 + time|subject), data=d, REML=F)  
 summary(mixedModel, corr=F)
+```
+
+## LGC
+
+Things become tedious for the growth curve model.  Furthermore, for the latter we have to fix the effect to be constant over time (shown as `B`), otherwise by default it will estimate the interaction with time. 
+
+```{r growth_graph_tv_cov, echo=FALSE}
+# note to self Diagrammer is difficult at best for multifactor loading situations, mostly because there is no control over label placement
+library(DiagrammeR)
+tags$div(style="width:50%; margin:auto auto; font-size:50%",
+         grViz('growth_tv_cov.gv', width='100%', height='25%')
+)
 ```
 
 ```{r tv_lgc}
@@ -284,10 +356,10 @@ model = "
   time ~ 0*clustervar1
 
   # add time-varying covariate 
-  y0 ~ x_coef*x0
-  y1 ~ x_coef*x1
-  y2 ~ x_coef*x2
-  y3 ~ x_coef*x3
+  y0 ~ B*x0
+  y1 ~ B*x1
+  y2 ~ B*x2
+  y3 ~ B*x3
 
   # residual variance
   y0 ~~ resvar*y0
@@ -302,9 +374,71 @@ summary(growthCurveModel, std=T)
 
 Results are still the same.
 
+
+# Add an interaction
+
+Allowing for an interaction between the time-varying covariate and time in the LGC will only require lifting the constraint that all the `y ~ x` effects be the same. However, this treats time as a categorical variable, and to run the same version as a mixed model, we thus have to treat time as both continuous and categorical (i.e. as a factor), and have the interaction regard the latter form.  
+
+## Mixed model
+
+```{r interaction2_mm}
+mixedModel = lmer(y1 ~ time + x + factor(time):x + (1 + time|subject), data=d, REML=F)  
+summary(mixedModel, corr=F)
+```
+
+## LGC
+
+The growth curve with unconstrained `y ~ x` paths.  At this point it's probably not too surprising why people doing growth curve models would find this difficult to understand, while those doing mixed models are still using the same interpretation as they would with standard regression output.
+
+```{r growth_graph_tv_cov_inter, echo=FALSE}
+# note to self Diagrammer is difficult at best for multifactor loading situations, mostly because there is no control over label placement
+library(DiagrammeR)
+tags$div(style="width:50%; margin:auto auto; font-size:50%",
+         grViz('growth_tv_cov_inter.gv', width='100%', height='25%')
+)
+```
+
+```{r interaction2_lgc}
+model = "
+  # intercept and slope with fixed coefficients
+  intercept =~ 1*y0 + 1*y1 + 1*y2 + 1*y3
+  time      =~ 0*y0 + 1*y1 + 2*y2 + 3*y3
+  
+  # only main effect for cluster level covariate
+  # intercept ~ clustervar1
+  # time ~ 0*clustervar1
+
+  # add time-varying covariate 
+  y0 ~ x0
+  y1 ~ x1
+  y2 ~ x2
+  y3 ~ x3
+
+  # residual variance
+  y0 ~~ resvar*y0
+  y1 ~~ resvar*y1
+  y2 ~~ resvar*y2
+  y3 ~~ resvar*y3
+"
+
+growthCurveModel = growth(model, data=dWide)
+summary(growthCurveModel, std=T)
+```
+
+Note that in the mixed model, the interaction effects are relative to the effect at time 0.  To make this more clear, I go ahead add them to that coefficient, and compare to the LGC output.
+
+```{r intercompare}
+fe = fixef(mixedModel)
+c(fe['x'], fe['x'] + fe[paste0('x:factor(time)', 1:3)])
+coef(growthCurveModel)[1:4]
+```
+
+
 # Heterogenous variances
 
-To investigate heterogeneous variances, we'll go back to the simplest setting for the main model. This will require the <span class="pack">nlme</span> package, as <span class="pack">lme4</span> doesn't have this functionality.  The specification of the `weights` argument allows a separate variance estimated at each time point.
+## Mixed model
+
+To investigate heterogeneous variances, we'll go back to the basic random intercepts and slopes model. This will require the <span class="pack">nlme</span> package, as <span class="pack">lme4</span> doesn't have this functionality.  The specification of the `weights` argument allows a separate variance estimated at each time point.
 
 ```{r hetero_mm}
 library(nlme)
@@ -313,6 +447,10 @@ mixedModel = lme(y1 ~ time, random = ~1 + time|subject, data=d, method='ML',
 summary(mixedModel)
 VarCorr(mixedModel) # to see variances along with standard deviations
 ```
+
+## LGC
+
+As we can see, the standard SEM approach estimates separate variances for  each time point by default.
 
 ```{r hetero_lgc}
 model = "
@@ -340,6 +478,7 @@ Latent growth curve models in the standard structural equation modeling setting 
 - Treat time as categorical
 - Posit interactions with time
 - Assume heterogeneous variances across time
+- Enforce the 'intercepts and slopes as outcomes' type  of thinking
 - Make for notably more tedious syntax[^semsyntax]
 
 Even when you are thinking of indirect effects, autocorrelated residual structure, etc. there are tools in R that would allow you to stay in the standard mixed model setting.  The <span class="pack">nlme</span> package (and others) provide several options for residual and other correlation structure (e.g. spatial). For certain mediation models, the <span class="pack">mediation</span> package would be able to do them with mixed models.  Adding latent class structure to mixed models can be done with <span class="pack">flexmix</span>.  Bayesian approaches are no more difficult with packages like <span class="pack">rstanarm</span> and <span class="pack">brms</span>.
