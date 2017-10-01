@@ -31,7 +31,7 @@ library(plotly); library(tidyverse); library(htmltools); library(lazerhawk); lib
 
 # Introduction
 
-Mixed models and latent growth curves (LGC) are common approaches to dealing with longitudinal/repeated measures data.  I have demonstrated their equivalence elsewhere (e.g. [here](http://m-clark.github.io/docs/sem/latent-growth-curves.html) and [here](https://m-clark.github.io/docs/mixedModels/growth_vs_mixed.html)), but this document hits on some additional nuances and notably updates the latter.  The only model packages needed here will be <span class="pack">lme4</span>, <span class="pack">nlme</span>, and <span class="pack">lavaan</span>.
+Mixed models and latent growth curves (LGC) are common approaches to dealing with longitudinal/repeated measures data.  I have demonstrated their equivalence elsewhere (e.g. [here](http://m-clark.github.io/docs/sem/latent-growth-curves.html)), but this document hits on some additional nuances.  The only model packages needed here will be <span class="pack">lme4</span>, <span class="pack">nlme</span>, and <span class="pack">lavaan</span>.
 
 I will not be explaining these models in detail; this document is for those already somewhat familiar with them.  However, the key idea is that the random effects in the mixed model are the latent variables in the growth curve model. 
 
