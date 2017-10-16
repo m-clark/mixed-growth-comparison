@@ -16,7 +16,8 @@ digraph growth {
            }
 
            node [width=.66, height=.66, fixedsize=true, shape=square, style='']
-           C; X0; X1; X2; X3;
+           #C;
+           X0; X1; X2; X3;
 
            node [width=.66, height=.66, fixedsize=true, shape=square, style='']
            subgraph {
@@ -33,14 +34,14 @@ digraph growth {
 
            # Initialization of edge attributes
            edge [color = gray50 overlap=false arrowsize=.5]
-           C -> Intercept [label='  γ' fontsize=10 fontcolor='gray50'];
+           #C -> Intercept [label='  γ' fontsize=10 fontcolor='gray50'];
 
            edge [color = gray50 overlap=false arrowsize=.5, dir=back]
            subgraph {
-             V1 -> X0[label='  B@_{1}' fontsize=10 fontcolor='gray50'];
-             V2 -> X1[label='  B@_{2}' fontsize=10 fontcolor='gray50'];
-             V3 -> X2[label='  B@_{3}' fontsize=10 fontcolor='gray50'];
-             V4 -> X3[label='  B@_{4}' fontsize=10 fontcolor='gray50'];
+             V1 -> X0[label='  &beta;@_{1}' fontsize=10 fontcolor='gray50'];
+             V2 -> X1[label='  &beta;@_{2}' fontsize=10 fontcolor='gray50'];
+             V3 -> X2[label='  &beta;@_{3}' fontsize=10 fontcolor='gray50'];
+             V4 -> X3[label='  &beta;@_{4}' fontsize=10 fontcolor='gray50'];
            }
 
 

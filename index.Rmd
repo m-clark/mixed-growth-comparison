@@ -243,7 +243,7 @@ summary(mixedModel, corr=F)
 
 For the growth curve however, we will have to first add another regression equation, and fix the path from that covariate to the slope factor to be zero, otherwise our estimates will be slightly different due to the indirect path through the random intercepts.
 
-```{r growth_graph_clus_cov, echo=FALSE}
+```{r growth_graph_clus_cov, echo=FALSE, eval=FALSE}
 # note to self Diagrammer is difficult at best for multifactor loading situations, mostly because there is no control over label placement
 library(DiagrammeR)
 tags$div(style="width:50%; margin:auto auto; font-size:50%",
@@ -251,6 +251,7 @@ tags$div(style="width:50%; margin:auto auto; font-size:50%",
 )
 ```
 
+<img src="img/cluster_level.png" style="display:block; margin: 0 auto;" width=50%>
 
 ```{r clustervar_lgc}
 model = "
@@ -291,13 +292,15 @@ summary(mixedModel, corr=F)
 In almost every depiction of growth curve models I've seen, the interaction of cluster level covariates and time is the default setting, unlike any other modeling situation, where it would normally be driven by theoretical or exploratory reasons.  Note that the interaction was not part of the data generating process, and thus should be close to zero.
 
 
-```{r growth_graph_clus_cov_inter, echo=FALSE}
+```{r growth_graph_clus_cov_inter, echo=FALSE, eval=FALSE}
 # note to self Diagrammer is difficult at best for multifactor loading situations, mostly because there is no control over label placement
 library(DiagrammeR)
 tags$div(style="width:50%; margin:auto auto; font-size:50%",
          grViz('growth_clus_cov_inter.gv', width='100%', height='25%')
 )
 ```
+
+<img src="img/cluster_level_inter.png" style="display:block; margin: 0 auto;" width=50%>
 
 ```{r cluster_inter_lgc}
 model = "
@@ -326,7 +329,7 @@ In the `Regressions:` section,  the `intercept ~ clustervar1` path represents th
 
 ## Mixed model
 
-As with the cluster level covariate, adding a time-varying covariate is trivial for the mixed model.  For this demo I will revert back to having no interaction with the cluster level covariate.  This is the data generating model, and can be compared to the parameters set in the data setup at the beginning.
+As with the cluster level covariate, adding a time-varying covariate is trivial for the mixed model.  For this demo I will revert back to having no interaction with the cluster level covariate.  This is the data generating model, and can be compared to the parameters set in the [data setup][data setup] at the beginning.
 
 ```{r tv_mm}
 mixedModel = lmer(y1 ~ time + clustervar1 + x + (1 + time|subject), data=d, REML=F)  
@@ -337,13 +340,15 @@ summary(mixedModel, corr=F)
 
 Things become tedious for the growth curve model.  Furthermore, for the latter we have to fix the effect to be constant over time (shown as `B`), otherwise by default it will estimate the interaction with time. 
 
-```{r growth_graph_tv_cov, echo=FALSE}
+```{r growth_graph_tv_cov, echo=FALSE, cache=FALSE, eval=FALSE}
 # note to self Diagrammer is difficult at best for multifactor loading situations, mostly because there is no control over label placement
 library(DiagrammeR)
 tags$div(style="width:50%; margin:auto auto; font-size:50%",
          grViz('growth_tv_cov.gv', width='100%', height='25%')
 )
 ```
+
+<img src="img/tvc.png" style="display:block; margin: 0 auto;" width=50%>
 
 ```{r tv_lgc}
 model = "
@@ -381,6 +386,8 @@ Allowing for an interaction between the time-varying covariate and time in the L
 
 ## Mixed model
 
+To keep things clear I'll remove the cluster level covariate from this and the LGC model.
+
 ```{r interaction2_mm}
 mixedModel = lmer(y1 ~ time + x + factor(time):x + (1 + time|subject), data=d, REML=F)  
 summary(mixedModel, corr=F)
@@ -390,13 +397,16 @@ summary(mixedModel, corr=F)
 
 The growth curve with unconstrained `y ~ x` paths.  At this point it's probably not too surprising why people doing growth curve models would find this difficult to understand, while those doing mixed models are still using the same interpretation as they would with standard regression output.
 
-```{r growth_graph_tv_cov_inter, echo=FALSE}
-# note to self Diagrammer is difficult at best for multifactor loading situations, mostly because there is no control over label placement
+```{r growth_graph_tv_cov_inter, echo=FALSE, eval=F, dev='png', cache=FALSE}
+# note to self Diagrammer is difficult at best for multifactor loading situations, mostly because there is no control over label placement; further it will not render greek (except for rho apparently) beyond the RStudio environment and show errors where there are none. Display png instead.
 library(DiagrammeR)
 tags$div(style="width:50%; margin:auto auto; font-size:50%",
          grViz('growth_tv_cov_inter.gv', width='100%', height='25%')
 )
 ```
+
+<img src="img/tvc_inter.png" style="display:block; margin: 0 auto;" width=50%>
+
 
 ```{r interaction2_lgc}
 model = "
@@ -404,10 +414,6 @@ model = "
   intercept =~ 1*y0 + 1*y1 + 1*y2 + 1*y3
   time      =~ 0*y0 + 1*y1 + 2*y2 + 3*y3
   
-  # only main effect for cluster level covariate
-  # intercept ~ clustervar1
-  # time ~ 0*clustervar1
-
   # add time-varying covariate 
   y0 ~ x0
   y1 ~ x1
@@ -450,7 +456,17 @@ VarCorr(mixedModel) # to see variances along with standard deviations
 
 ## LGC
 
-As we can see, the standard SEM approach estimates separate variances for  each time point by default.
+```{r growth_graph_hetero, echo=FALSE}
+# note to self Diagrammer is difficult at best for multifactor loading situations, mostly because there is no control over label placement
+library(DiagrammeR)
+tags$div(style="width:50%; margin:auto auto; font-size:50%",
+         grViz('growth_hetero.gv', width='100%', height='25%')
+)
+
+```
+
+
+As we will see, the standard SEM approach estimates separate variances for each time point by default.  In the SEM context, the $\mathcal{U}$ are latent variables, and represent all causes acting on the dependent variable not otherwise specified.  Technically, their paths are fixed to one and the variance of the latent variable is estimated. 
 
 ```{r hetero_lgc}
 model = "
@@ -463,12 +479,14 @@ growthCurveModel = growth(model, data=dWide)
 summary(growthCurveModel, std=T)
 ```
 
-Note that the residual variance at time 0 in the growth model is the reported residual variance in the mixed model.  Unfortunately nlme is a bit convoluted[^convoluted] in reporting the actual estimated variances, which are given not only as *relative* to the time 0 estimate, but also on the standard deviation scale.  Even figuring out how to get these values is something no one can actually remember without multiple web searches.
+Note that the residual variance at time 0 in the growth model is the reported residual variance in the mixed model.  Unfortunately <span class="pack">nlme</span> is a bit convoluted[^convoluted] in reporting the actual estimated variances, which are given not only as *relative* to the time 0 estimate, but also on the standard deviation scale.  Even figuring out how to get these values is something no one can actually remember without multiple web searches, but it is possible.
 
 ```{r hetero_vars}
 (c(1.0000000, coef(mixedModel$modelStruct$varStruct, unconstrained=F))*mixedModel$sigma)^2 %>% 
   rbind(coef(growthCurveModel)[1:4])
 ```
+
+
 
 # Summary
 
@@ -479,18 +497,19 @@ Latent growth curve models in the standard structural equation modeling setting 
 - Posit interactions with time
 - Assume heterogeneous variances across time
 - Enforce the 'intercepts and slopes as outcomes' type  of thinking
+- Assumes complexity that should instead be tested in a model comparison framework
 - Make for notably more tedious syntax[^semsyntax]
 
 Even when you are thinking of indirect effects, autocorrelated residual structure, etc. there are tools in R that would allow you to stay in the standard mixed model setting.  The <span class="pack">nlme</span> package (and others) provide several options for residual and other correlation structure (e.g. spatial). For certain mediation models, the <span class="pack">mediation</span> package would be able to do them with mixed models.  Adding latent class structure to mixed models can be done with <span class="pack">flexmix</span>.  Bayesian approaches are no more difficult with packages like <span class="pack">rstanarm</span> and <span class="pack">brms</span>.
 
-More complex correlational structure (e.g. cross random effects, spatial) are not even possible in the SEM setting[^hierlgc]. If you have many time points, things only get worse for the LGC approach as far as the syntax.  Even having just a handful of covariates makes the LGC approach exceedingly complex.
+More complex correlational structure (e.g. nested with cross random effects, spatial) are not even possible in the SEM setting[^hierlgc]. If you have many time points, things only get worse for the LGC approach as far as the syntax.  Even having just a handful of covariates makes the LGC approach exceedingly complex.
 
-I think it is very useful to think of random effects as latent variables.  However, I find little utility in explicitly modeling them that way.
+I think it is very useful to think of random effects as latent variables.  However, I find little utility in explicitly modeling them that way.  Most LGC I see are overly simplistic, not including demographic and other covariates because the model quickly gets unwieldy both visually, syntactically, and cognitively.  The mixed model, on the other hand, allows one to stick to the more intuitive regression interpretation, while affording all the rich parameterization of (possibly complicated) random effects models.
 
 [^clustervar]: In case it's not clear, this would be a time-invariant variable. If these were repeated measures on individuals, this would be something like sex or race.
 
-[^convoluted]: Most of this package object structure and output is irksome to me, starting with the umpteen (random!) decimal places.  I have no problem admitting this may be a character flaw on my part.
+[^convoluted]: Most of this package object structure and output is irksome to me, starting with the umpteen (random!) decimal places.  I have no problem admitting this may be a character flaw on my part.  Note that there is a reason for having the first variance fixed to one for estimation purposes, but I can't think of one for reporting it in this fashion.
 
-[^semsyntax]: To its credit, Mplus does have some syntactical shortcuts to make things a little easier.
+[^semsyntax]: To its credit, MPlus does have some syntactical shortcuts to make things a little easier.
 
 [^hierlgc]: At least that I'm aware of.  You can presumably incorporate hierarchical structure via as multilevel SEM, where the SEM is an LGC.

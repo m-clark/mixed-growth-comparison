@@ -37,10 +37,10 @@ digraph growth {
 
            edge [color = gray50 overlap=false arrowsize=.5, dir=back]
            subgraph {
-             V1 -> X0[label='  B' fontsize=10 fontcolor='gray50'];
-             V2 -> X1[label='  B' fontsize=10 fontcolor='gray50'];
-             V3 -> X2[label='  B' fontsize=10 fontcolor='gray50'];
-             V4 -> X3[label='  B' fontsize=10 fontcolor='gray50'];
+             V1 -> X0[label='  &beta;' fontsize=10 fontcolor='gray50'];
+             V2 -> X1[label='  &beta;' fontsize=10 fontcolor='gray50'];
+             V3 -> X2[label='  &beta;' fontsize=10 fontcolor='gray50'];
+             V4 -> X3[label='  &beta;' fontsize=10 fontcolor='gray50'];
            }
 
 
