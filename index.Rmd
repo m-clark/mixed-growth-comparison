@@ -28,6 +28,8 @@ library(plotly); library(tidyverse); library(htmltools); library(lazerhawk); lib
 # knitr::include_graphics('img/nineteeneightyR.png', dpi = NA)
 ```
 
+<!-- DO NOT FORGET TO MOVE THE FILE TO DOCS -->
+
 
 # Introduction
 
