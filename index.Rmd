@@ -14,7 +14,7 @@ css: standard_html.css
 ---
 
 ```{r setup, include=FALSE, eval=TRUE}
-knitr::opts_chunk$set(echo = T, message=F, warning=F, comment=NA, autodep=F, eval=T, cache.rebuild=F, cache=T,
+knitr::opts_chunk$set(echo = T, message=F, warning=F, comment=NA, autodep=F, eval=T, cache.rebuild=F, cache=F,
                       R.options=list(width=120), fig.width=8, fig.align = 'center')
 ```
 
@@ -240,6 +240,40 @@ summary(mixedModel, corr=F)
 ```
 
 ## LGC
+
+For the growth curve however, we will have to first add another regression equation, and fix the path from that covariate to the slope factor to be zero, otherwise our estimates will be slightly different due to the indirect path through the random intercepts.
+
+```{r growth_graph_clus_cov, echo=FALSE, eval=FALSE}
+# note to self Diagrammer is difficult at best for multifactor loading situations, mostly because there is no control over label placement
+library(DiagrammeR)
+tags$div(style="width:50%; margin:auto auto; font-size:50%",
+         grViz('growth_clus_cov.gv', width='100%', height='25%')
+)
+```
+
+<img src="img/cluster_level.png" style="display:block; margin: 0 auto;" width=50%>
+
+```{r clustervar_lgc}
+model = "
+  # intercept and slope with fixed coefficients
+  intercept =~ 1*y0 + 1*y1 + 1*y2 + 1*y3
+  time      =~ 0*y0 + 1*y1 + 2*y2 + 3*y3
+
+  # cluster level effect
+  intercept ~ clustervar1
+  time ~ 0*clustervar1
+
+  # residual variance
+  y0 ~~ resvar*y0
+  y1 ~~ resvar*y1
+  y2 ~~ resvar*y2
+  y3 ~~ resvar*y3
+"
+
+growthCurveModel = growth(model, data=dWide)
+summary(growthCurveModel, std=T)
+```
+
 
 # Add an interaction
 
