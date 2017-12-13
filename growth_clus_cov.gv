@@ -34,7 +34,7 @@ digraph growth {
            # Initialization of edge attributes
            edge [color = gray50 overlap=false arrowsize=.5]
 
-           C -> Intercept [label="  &gamma;\n" fontsize=10 fontcolor='gray50'];
+           C -> Intercept [label="  $\gamma$" fontsize=10 fontcolor='gray50'];
 
            # Edge statements
 
