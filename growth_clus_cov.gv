@@ -34,12 +34,12 @@ digraph growth {
            # Initialization of edge attributes
            edge [color = gray50 overlap=false arrowsize=.5]
 
-           C -> Intercept [label="  $\gamma$" fontsize=10 fontcolor='gray50'];
+           C -> Intercept [label="  γ" fontsize=10 fontcolor='gray50'];
 
            # Edge statements
 
            edge [ fontcolor=gray25 dir=both fontsize='8px']  # labeleangle, labeldistance etc. attributes ignored
-           Intercept -> Slope[label='  &rho;\n' minlen=2];
+           Intercept -> Slope[label='  &rho;\n' minlen=2  fontcolor='gray50'];
 
            edge [dir=forward headport='c' minlen=1]
            edge [label='1'  color='#1f77b4' fontcolor='#1f77b4']
