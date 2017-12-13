@@ -37,7 +37,7 @@ I will not be explaining these models in detail; this document is for those alre
 
 In what follows we'll examine data where clusters have multiple observations across time, and eventually other covariates will be added to the mix that are time-varying or time-constant. The following can serve as a quick reminder of what we're dealing with. The following depicts a mixed model with random intercepts and random slopes for the time covariate for observations $i$ in cluster $c$.
 
-$$y_{ic} = \alpha_c + \beta_c \cdot \mathscr{time}_{ic} + \epsilon_{ic}$$
+$$y_{ic} = \alpha_c + \beta_c \cdot \mathrm{time}_{ic} + \epsilon_{ic}$$
 
 
 $$\begin{bmatrix}\alpha_c \\
